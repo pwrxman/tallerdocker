@@ -16,29 +16,9 @@ router = APIRouter(prefix="/userdb",
                     responses={status.HTTP_404_NOT_FOUND : {"message": "No Encontrado"}})
 
 
-#  AHORA PONGAMOS UN POST
-#  para INSERTAR y/o crear un nuevo usuario
-
-@router.post("/", response_model=User, status_code=status.HTTP_201_CREATED)  # Respuest por defecto cuando OK ; Codigo de respuesta por defecto
-async def user(user: User):
-    if type(search_user("email", user.email)) == User:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="El Usuario ya existe usando HTTPEXCEPTION")  # Codigo especifico por el error ocurrido
-
-    user_dict = dict(user) 
-    del user_dict["id"]   
-
-    id = db_client.users.insert_one(user_dict).inserted_id
-
-    # _id es el nombre por defecto del campo donde MongoDB almcena el ID único
-    new_user = user_schema(db_client.users.find_one({"_id": id}))
-
-    return User(**new_user)
-
 
 # Para hacer una consulta a la base de datos
-@router.get("/list", response_model=list[User])  # Obtener un listado de usuarios en la DB  GET 127.0.0.1:8000/userdb
+@router.get("/", response_model=list[User])  # Obtener un listado de usuarios en la DB  GET 127.0.0.1:8000/userdb
 async def users():
     return users_schema(db_client.users.find())
 
@@ -48,17 +28,27 @@ async def user(id: str):
     return search_user("_id", ObjectId(id))
 
 # Consulta por QUERY
-@router.get("/user/")  # Query  # Buscar por QUERY  GET 127.0.0.1:8000/userdb/user/?id=66c0400c997b66ca7504ce29 donde la clave es el ID del usuario
+@router.get("/")  # Query  # Buscar por QUERY  GET 127.0.0.1:8000/userdb/user/?id=66c0400c997b66ca7504ce29 donde la clave es el ID del usuario
 async def user(id: str):
     return search_user("_id", ObjectId(id))
 
-@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)  # DELETE 127.0.0.1:8000/userdb/66c0400c997b66ca7504ce29 donde la clave es el ID del usuario
-async def user(id: str):
-    found = db_client.users.find_one_and_delete({"_id": ObjectId(id)})
+#  AHORA PONGAMOS UN POST
+#  para INSERTAR y/o crear un nuevo usuario
+# Respuest por defecto cuando OK ; Codigo de respuesta por defecto
+@router.post("/", response_model=User, status_code=status.HTTP_201_CREATED)
+async def user(user: User):
+    if type(search_user("email", user.email)) == User:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="El usuario ya existe")
 
-    if not found:
-        return {"error": "No se ha eliminado el usuario"}
+    user_dict = dict(user)
+    del user_dict["id"]
 
+    id = db_client.users.insert_one(user_dict).inserted_id
+
+    new_user = user_schema(db_client.users.find_one({"_id": id}))
+
+    return User(**new_user)
 
 
 # Actualizar un usuario UPDATE
@@ -77,6 +67,17 @@ async def user(user: User):
 
     return search_user("_id", ObjectId(user.id))
 
+
+
+
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)  # DELETE 127.0.0.1:8000/userdb/66c0400c997b66ca7504ce29 donde la clave es el ID del usuario
+async def user(id: str):
+    found = db_client.users.find_one_and_delete({"_id": ObjectId(id)})
+
+    if not found:
+        return {"error": "No se ha eliminado el usuario"}
+
+
 def search_user(field: str, key):
     try:
         user = db_client.users.find_one({field: key})
@@ -84,6 +85,7 @@ def search_user(field: str, key):
 
     except:
         return {"error": "No se ha encontrado el usuario por funcion"}
+
 
 
 

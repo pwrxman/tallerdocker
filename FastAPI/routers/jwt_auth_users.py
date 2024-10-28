@@ -1,10 +1,10 @@
 # JWT  JSON WEB TOKEN
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import jwt
-from jwt.exceptions import InvalidTokenError
+# from jwt.exceptions import JWTError
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 
@@ -12,7 +12,10 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_DURATION = 1
 SECRET = "994bc41d4f21b7475774f0e085325314b084e3170016fbda7e01b69b14b07f7f"  # generado con el comando "openssl rand -hex 32"
 
-app = FastAPI()
+router = APIRouter(prefix="/jwtauth",
+                   tags=["jwtauth"],
+                   responses={status.HTTP_404_NOT_FOUND: {"message": "No encontrado"}})
+
 oauth2 = OAuth2PasswordBearer(tokenUrl="login")
 
 crypt = CryptContext(schemes=["bcrypt"])
@@ -45,19 +48,19 @@ def search_user(username: str):
 
 async def auth_user(token: str = Depends(oauth2)):
 
-    exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED , 
-                            detail="Credenciales de autenticación inváidas", 
-                            headers={"www-Authenticate": "Bearer"})
+    exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Credenciales de autenticación inválidas",
+        headers={"WWW-Authenticate": "Bearer"})
 
     try:
         username = jwt.decode(token, SECRET, algorithms=[ALGORITHM]).get("sub")
         if username is None:
             raise exception
 
-
-    except InvalidTokenError:
+    except:        # Con Libreria jose utilizar JWTExrror
         raise exception
-    
+
     return search_user(username)
 
 # Criterio de dependencia
@@ -68,24 +71,25 @@ async def current_user(user: User = Depends(auth_user)):
     return user
 
 
-@app.post("/login") 
+@router.post("/login") 
 async def login(form: OAuth2PasswordRequestForm = Depends()):
     user_db = users_db.get(form.username)
     if not user_db:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El usuario no Es Correcto")
-    
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="El usuario no es correcto")
+
     user = search_user_db(form.username)
 
     if not crypt.verify(form.password, user.password):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El password no Es Correcto")
-    
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="La contraseña no es correcta")
+
     access_token = {"sub": user.username,
                     "exp": datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_DURATION)}
 
-    return {"access_token": jwt.encode(access_token, SECRET, algorithm=ALGORITHM) , "token_type": "bearer"} # el token generado puede ser validado en jwt.io
+    return {"access_token": jwt.encode(access_token, SECRET, algorithm=ALGORITHM), "token_type": "bearer"}
 
 
-
-@app.get("/users/me")
+@router.get("/users/me")
 async def me(user: User = Depends(current_user)):
     return user

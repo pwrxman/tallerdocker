@@ -13,7 +13,7 @@ products_list = ["Producto 1", "Producto 2", "Producto 3", "Producto 4", "Produc
 # Utilizando la Entidad products
 @router.get("/")    # como en la declaracion de router ya se tiene el prefix="/productos", ya no es necedsario ponerlo aqui
 async def products():
-    return ["Producto 1", "Producto 2", "Producto 3", "Producto 4", "Producto 5"]
+    return products_list
 
 
 @router.get("/{id}")    # como en la declaracion de router ya se tiene el prefix="/productos", ya no es necedsario ponerlo aqui
