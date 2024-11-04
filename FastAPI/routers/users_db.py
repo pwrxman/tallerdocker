@@ -18,7 +18,7 @@ router = APIRouter(prefix="/userdb",
 
 
 # Para hacer una consulta a la base de datos
-@router.get("/", response_model=list[User])  # Obtener un listado de usuarios en la DB  GET 127.0.0.1:8000/userdb
+@router.get("/", response_model=list[User])  # GET localhost:8000/userdb   Obtener un listado de usuarios en la DB
 async def users():
     return users_schema(db_client.users.find())
 
